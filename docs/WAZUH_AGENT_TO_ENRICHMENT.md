@@ -180,6 +180,8 @@ Repeat 2–3 times if you want multiple enriched files. The agent appends syslog
 INJECT_TARGET=agent bash ./scripts/wazuh-injection-demo.sh
 ```
 
+Each demo run prints **`INJECT_RUN_ID`** (e.g. `inj-20260604T174500-12345`) embedded in every injected log line. Wazuh still assigns numeric **`wazuh_alert_id`** values (shown in step 4 output and `enriched-<id>-*.json` filenames). Use `INJECT_RUN_ID` to tie one run together across `alerts.json`, Postgres, and enriched files.
+
 **Optional — inject on manager only** (bypasses agents):
 
 ```bash
