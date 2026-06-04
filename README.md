@@ -527,6 +527,7 @@ The repository includes additional guidance in:
 | Architecture overview | [docs/architecture/overview.md](docs/architecture/overview.md) |
 | Deployment guide | [docs/deployment/guide.md](docs/deployment/guide.md) |
 | Wazuh integration | [docs/WAZUH_INTEGRATION_GUIDE.md](docs/WAZUH_INTEGRATION_GUIDE.md) |
+| Agent → enriched alerts (lab) | [docs/WAZUH_AGENT_TO_ENRICHMENT.md](docs/WAZUH_AGENT_TO_ENRICHMENT.md) |
 | ML accuracy | [docs/ai-soc/ml-accuracy.md](docs/ai-soc/ml-accuracy.md) |
 | API docs | [docs/api/ml-inference.md](docs/api/ml-inference.md) |
 | Research context | [docs/research/context.md](docs/research/context.md) |

@@ -2,6 +2,8 @@
 
 Complete guide for configuring Wazuh to send alerts to the AI-powered integration service.
 
+> **Lab walkthrough (agent inject → enriched JSON):** see **[WAZUH_AGENT_TO_ENRICHMENT.md](WAZUH_AGENT_TO_ENRICHMENT.md)** for copy-paste steps on the Docker lab stack (`custom-ai-soc-webhook`, agents, inject scripts, verification).
+
 ## Architecture Overview
 
 ```
@@ -35,113 +37,47 @@ Complete guide for configuring Wazuh to send alerts to the AI-powered integratio
 
 ## Configuration Methods
 
-### Method 1: Native Wazuh Integration (Recommended)
+### Method 1: AI-SOC custom integration (recommended for this repo)
 
-**Pros:**
-- Built-in reliability and retry logic
-- Officially supported by Wazuh
-- Automatic JSON formatting
+Wazuh 4.8 requires custom outbound hooks to use a name starting with `custom-`, plus a script under `/var/ossec/integrations/`. This project ships:
 
-**Steps:**
+| Path | Purpose |
+|------|---------|
+| `config/wazuh-manager/integrations/custom-ai-soc-webhook` | Shell launcher (invokes Wazuh framework Python) |
+| `config/wazuh-manager/integrations/custom-ai-soc-webhook.py` | POSTs alert JSON to `wazuh-integration` |
+| `config/wazuh-manager/ossec.conf` | `<integration>` block (mounted into the manager container) |
 
-1. **SSH into Wazuh Manager container/server:**
-   ```bash
-   docker exec -it wazuh-manager bash
-   # OR
-   ssh user@wazuh-manager-host
-   ```
+**`ossec.conf` block (lab thresholds):**
 
-2. **Edit `/var/ossec/etc/ossec.conf`:**
-   ```xml
-   <ossec_config>
-     <!-- Add inside <ossec_config> block -->
-     <integration>
-       <name>custom-webhook</name>
-       <hook_url>http://wazuh-integration:8002/webhook</hook_url>
-       <level>7</level>
-       <alert_format>json</alert_format>
-       <options>{"data": "all"}</options>
-     </integration>
-   </ossec_config>
-   ```
+```xml
+<integration>
+  <name>custom-ai-soc-webhook</name>
+  <hook_url>http://wazuh-integration:8002/webhook</hook_url>
+  <level>5</level>
+  <alert_format>json</alert_format>
+</integration>
+```
 
-3. **Verify configuration syntax:**
-   ```bash
-   /var/ossec/bin/verify-agent-conf
-   ```
+Use `<level>7</level>` and `MIN_SEVERITY=7` in production. Do **not** use `<name>ai-soc-webhook</name>` — Wazuh rejects non-`custom-*` names.
 
-4. **Restart Wazuh Manager:**
-   ```bash
-   systemctl restart wazuh-manager
-   # OR (inside Docker container)
-   /var/ossec/bin/wazuh-control restart
-   ```
+Compose mounts both integration files into `wazuh-manager` (`phase1-siem-core-windows.yml` / `phase1-siem-core.yml`). After edits:
 
-5. **Monitor integration logs:**
-   ```bash
-   tail -f /var/ossec/logs/ossec.log | grep integration
-   ```
+```bash
+docker compose -p ai-soc-siem -f docker-compose/phase1-siem-core-windows.yml up -d wazuh-manager --force-recreate
+```
 
-### Method 2: Custom Integration Script
+**End-to-end lab steps:** [WAZUH_AGENT_TO_ENRICHMENT.md](WAZUH_AGENT_TO_ENRICHMENT.md)
 
-For advanced filtering or pre-processing.
+### Method 2: Manual / non-Docker install
 
-**Steps:**
+If you are not using the repo compose mounts:
 
-1. **Create integration script `/var/ossec/integrations/ai-soc-webhook`:**
-   ```bash
-   #!/bin/bash
-   # AI-SOC Webhook Integration Script
-   # Called by Wazuh integratord for each alert
-
-   WEBHOOK_URL="http://wazuh-integration:8002/webhook"
-   ALERT_FILE="$1"
-
-   # Optional: Add custom headers, authentication, or filtering
-   RULE_LEVEL=$(jq -r '.rule.level' "$ALERT_FILE")
-
-   # Only send if level >= 7
-   if [ "$RULE_LEVEL" -ge 7 ]; then
-       curl -X POST "$WEBHOOK_URL" \
-         -H "Content-Type: application/json" \
-         -H "X-Wazuh-Alert: true" \
-         --max-time 10 \
-         --retry 3 \
-         --retry-delay 2 \
-         -d @"$ALERT_FILE" \
-         --silent \
-         --output /dev/null \
-         --write-out "%{http_code}\n" >> /var/ossec/logs/integrations.log 2>&1
-   fi
-   ```
-
-2. **Set permissions:**
-   ```bash
-   chmod 750 /var/ossec/integrations/ai-soc-webhook
-   chown root:wazuh /var/ossec/integrations/ai-soc-webhook
-   ```
-
-3. **Configure in `ossec.conf`:**
-   ```xml
-   <integration>
-     <name>ai-soc-webhook</name>
-     <hook_url>http://wazuh-integration:8002/webhook</hook_url>
-     <level>7</level>
-     <alert_format>json</alert_format>
-   </integration>
-   ```
-
-4. **Test script manually:**
-   ```bash
-   # Generate test alert
-   echo '{"timestamp":"2025-01-13T14:30:45Z","rule":{"level":10,"description":"Test alert","id":"99999"},"id":"test-001","agent":{"id":"000","name":"test"}}' > /tmp/test_alert.json
-
-   # Run script
-   /var/ossec/integrations/ai-soc-webhook /tmp/test_alert.json
-
-   # Check response code in logs
-   tail /var/ossec/logs/integrations.log
-   ```
+1. Copy `custom-ai-soc-webhook` and `custom-ai-soc-webhook.py` to `/var/ossec/integrations/`.
+2. `chmod 750` both; `chown root:wazuh` (launcher must be executable).
+3. Add the `<integration>` block above to `/var/ossec/etc/ossec.conf`.
+4. ` /var/ossec/bin/wazuh-control restart`
+5. Confirm: `grep integratord /var/ossec/logs/ossec.log` shows `Enabling integration for: 'custom-ai-soc-webhook'`.
+6. Test: run the launcher with a sample JSON path (see walkthrough doc).
 
 ### Method 3: Filebeat/Logstash Pipeline
 

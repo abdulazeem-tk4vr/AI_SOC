@@ -111,6 +111,8 @@ nav:
       - Docker Architecture: deployment/docker.md
       - Production Deployment: deployment/production.md
       - Performance Optimization: deployment/performance.md
+      - Wazuh Agent to Enrichment: WAZUH_AGENT_TO_ENRICHMENT.md
+      - Wazuh Integration Guide: WAZUH_INTEGRATION_GUIDE.md
   - Security:
       - Security Guide: security/guide.md
       - Security Baseline: security/baseline.md

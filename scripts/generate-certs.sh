@@ -28,11 +28,8 @@ CONFIG_DIR="$PROJECT_DIR/config"
 
 # Certificate parameters
 DAYS_VALID=3650  # 10 years
-COUNTRY="US"
-STATE="California"
-CITY="Los Angeles"
-ORG="AI-SOC"
-OU="Security Operations"
+
+mkdir -p "$CONFIG_DIR"
 
 echo -e "${YELLOW}[INFO]${NC} Project directory: $PROJECT_DIR"
 echo -e "${YELLOW}[INFO]${NC} Config directory: $CONFIG_DIR"
@@ -46,11 +43,11 @@ echo -e "\n${GREEN}[1/5] Generating Root CA...${NC}"
 ROOT_CA_DIR="$CONFIG_DIR/root-ca"
 mkdir -p "$ROOT_CA_DIR"
 
-if [ ! -f "$ROOT_CA_DIR/root-ca-key.pem" ]; then
+if [ ! -f "$ROOT_CA_DIR/root-ca-key.pem" ] || [ ! -f "$ROOT_CA_DIR/root-ca.pem" ]; then
     openssl genrsa -out "$ROOT_CA_DIR/root-ca-key.pem" 4096
     openssl req -new -x509 -days $DAYS_VALID -key "$ROOT_CA_DIR/root-ca-key.pem" \
         -out "$ROOT_CA_DIR/root-ca.pem" \
-        -subj "/C=$COUNTRY/ST=$STATE/L=$CITY/O=$ORG/OU=$OU/CN=AI-SOC Root CA"
+        -config "$CONFIG_DIR/openssl-root-ca.cnf"
     echo -e "${GREEN}[OK]${NC} Root CA generated"
 else
     echo -e "${YELLOW}[SKIP]${NC} Root CA already exists"
@@ -65,13 +62,13 @@ INDEXER_CERT_DIR="$CONFIG_DIR/wazuh-indexer/certs"
 mkdir -p "$INDEXER_CERT_DIR"
 
 # Generate indexer private key
-if [ ! -f "$INDEXER_CERT_DIR/indexer-key.pem" ]; then
+if [ ! -f "$INDEXER_CERT_DIR/indexer-key.pem" ] || [ ! -f "$INDEXER_CERT_DIR/indexer.pem" ]; then
     openssl genrsa -out "$INDEXER_CERT_DIR/indexer-key.pem" 2048
 
     # Generate CSR
     openssl req -new -key "$INDEXER_CERT_DIR/indexer-key.pem" \
         -out "$INDEXER_CERT_DIR/indexer.csr" \
-        -subj "/C=$COUNTRY/ST=$STATE/L=$CITY/O=$ORG/OU=$OU/CN=wazuh-indexer"
+        -config "$CONFIG_DIR/openssl-indexer.cnf"
 
     # Sign with Root CA
     openssl x509 -req -days $DAYS_VALID \
@@ -79,6 +76,8 @@ if [ ! -f "$INDEXER_CERT_DIR/indexer-key.pem" ]; then
         -CA "$ROOT_CA_DIR/root-ca.pem" \
         -CAkey "$ROOT_CA_DIR/root-ca-key.pem" \
         -CAcreateserial \
+        -extensions v3_req \
+        -extfile "$CONFIG_DIR/openssl-indexer.cnf" \
         -out "$INDEXER_CERT_DIR/indexer.pem"
 
     # Copy Root CA
@@ -100,18 +99,20 @@ echo -e "\n${GREEN}[3/5] Generating Wazuh Manager certificates...${NC}"
 MANAGER_CERT_DIR="$CONFIG_DIR/wazuh-manager/certs"
 mkdir -p "$MANAGER_CERT_DIR"
 
-if [ ! -f "$MANAGER_CERT_DIR/filebeat-key.pem" ]; then
+if [ ! -f "$MANAGER_CERT_DIR/filebeat-key.pem" ] || [ ! -f "$MANAGER_CERT_DIR/filebeat.pem" ]; then
     openssl genrsa -out "$MANAGER_CERT_DIR/filebeat-key.pem" 2048
 
     openssl req -new -key "$MANAGER_CERT_DIR/filebeat-key.pem" \
         -out "$MANAGER_CERT_DIR/filebeat.csr" \
-        -subj "/C=$COUNTRY/ST=$STATE/L=$CITY/O=$ORG/OU=$OU/CN=wazuh-manager"
+        -config "$CONFIG_DIR/openssl-manager.cnf"
 
     openssl x509 -req -days $DAYS_VALID \
         -in "$MANAGER_CERT_DIR/filebeat.csr" \
         -CA "$ROOT_CA_DIR/root-ca.pem" \
         -CAkey "$ROOT_CA_DIR/root-ca-key.pem" \
         -CAcreateserial \
+        -extensions v3_req \
+        -extfile "$CONFIG_DIR/openssl-manager.cnf" \
         -out "$MANAGER_CERT_DIR/filebeat.pem"
 
     cp "$ROOT_CA_DIR/root-ca.pem" "$MANAGER_CERT_DIR/root-ca.pem"
@@ -130,18 +131,20 @@ echo -e "\n${GREEN}[4/5] Generating Wazuh Dashboard certificates...${NC}"
 DASHBOARD_CERT_DIR="$CONFIG_DIR/wazuh-dashboard/certs"
 mkdir -p "$DASHBOARD_CERT_DIR"
 
-if [ ! -f "$DASHBOARD_CERT_DIR/dashboard-key.pem" ]; then
+if [ ! -f "$DASHBOARD_CERT_DIR/dashboard-key.pem" ] || [ ! -f "$DASHBOARD_CERT_DIR/dashboard.pem" ]; then
     openssl genrsa -out "$DASHBOARD_CERT_DIR/dashboard-key.pem" 2048
 
     openssl req -new -key "$DASHBOARD_CERT_DIR/dashboard-key.pem" \
         -out "$DASHBOARD_CERT_DIR/dashboard.csr" \
-        -subj "/C=$COUNTRY/ST=$STATE/L=$CITY/O=$ORG/OU=$OU/CN=wazuh-dashboard"
+        -config "$CONFIG_DIR/openssl-dashboard.cnf"
 
     openssl x509 -req -days $DAYS_VALID \
         -in "$DASHBOARD_CERT_DIR/dashboard.csr" \
         -CA "$ROOT_CA_DIR/root-ca.pem" \
         -CAkey "$ROOT_CA_DIR/root-ca-key.pem" \
         -CAcreateserial \
+        -extensions v3_req \
+        -extfile "$CONFIG_DIR/openssl-dashboard.cnf" \
         -out "$DASHBOARD_CERT_DIR/dashboard.pem"
 
     cp "$ROOT_CA_DIR/root-ca.pem" "$DASHBOARD_CERT_DIR/root-ca.pem"
@@ -160,18 +163,20 @@ echo -e "\n${GREEN}[5/5] Generating Filebeat certificates...${NC}"
 FILEBEAT_CERT_DIR="$CONFIG_DIR/filebeat/certs"
 mkdir -p "$FILEBEAT_CERT_DIR"
 
-if [ ! -f "$FILEBEAT_CERT_DIR/filebeat-key.pem" ]; then
+if [ ! -f "$FILEBEAT_CERT_DIR/filebeat-key.pem" ] || [ ! -f "$FILEBEAT_CERT_DIR/filebeat.pem" ]; then
     openssl genrsa -out "$FILEBEAT_CERT_DIR/filebeat-key.pem" 2048
 
     openssl req -new -key "$FILEBEAT_CERT_DIR/filebeat-key.pem" \
         -out "$FILEBEAT_CERT_DIR/filebeat.csr" \
-        -subj "/C=$COUNTRY/ST=$STATE/L=$CITY/O=$ORG/OU=$OU/CN=filebeat"
+        -config "$CONFIG_DIR/openssl-filebeat.cnf"
 
     openssl x509 -req -days $DAYS_VALID \
         -in "$FILEBEAT_CERT_DIR/filebeat.csr" \
         -CA "$ROOT_CA_DIR/root-ca.pem" \
         -CAkey "$ROOT_CA_DIR/root-ca-key.pem" \
         -CAcreateserial \
+        -extensions v3_req \
+        -extfile "$CONFIG_DIR/openssl-filebeat.cnf" \
         -out "$FILEBEAT_CERT_DIR/filebeat.pem"
 
     cp "$ROOT_CA_DIR/root-ca.pem" "$FILEBEAT_CERT_DIR/root-ca.pem"

@@ -117,3 +117,11 @@ htmlcov/
 # Documentation builds
 docs/_build/
 site/
+
+# Runtime pipeline outputs (wazuh-integration / correlation-engine)
+data/enriched-alerts/*
+!data/enriched-alerts/README.md
+!data/enriched-alerts/.gitkeep
+data/defense-plans/*
+!data/defense-plans/README.md
+!data/defense-plans/.gitkeep

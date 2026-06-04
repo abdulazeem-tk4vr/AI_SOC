@@ -308,6 +308,7 @@ load_deploy_config() {
     if [[ -f "$SCRIPT_DIR/.env" ]]; then
         set -a
         # shellcheck disable=SC1091
+        # Quote cron-style values in .env (e.g. BACKUP_SCHEDULE="0 2 * * *") so source does not run "2" as a command.
         source "$SCRIPT_DIR/.env"
         set +a
     fi
@@ -661,7 +662,7 @@ deploy_siem() {
         return 0
     fi
 
-    local -a siem_containers=(wazuh-indexer wazuh-manager wazuh-dashboard)
+    local -a siem_containers=(wazuh-indexer wazuh-manager wazuh-dashboard wazuh-agent-web wazuh-agent-app)
     log "SIEM stack: ${siem_containers[*]}"
     log "Compose project: $SIEM_PROJECT"
 

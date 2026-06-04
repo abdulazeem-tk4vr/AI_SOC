@@ -5,6 +5,7 @@ A reader-friendly guide to how alerts move through AI-SOC: from a host event to 
 **Related documentation:**
 
 - [docs/deployment/runpod-ollama.md](docs/deployment/runpod-ollama.md) — GPU Ollama on RunPod
+- [docs/WAZUH_AGENT_TO_ENRICHMENT.md](docs/WAZUH_AGENT_TO_ENRICHMENT.md) — lab walkthrough (agent inject → enriched JSON)
 - [docs/WAZUH_INTEGRATION_GUIDE.md](docs/WAZUH_INTEGRATION_GUIDE.md) — Wazuh webhook setup
 - [docs/architecture/dataflow.md](docs/architecture/dataflow.md) — broader data-flow patterns
 - [sample_inputs/](sample_inputs/) — JSON bodies for manual API testing
@@ -163,7 +164,7 @@ Internal Docker hostnames (e.g. `http://alert-triage:8000`) differ from host por
 
 | Source | How it reaches Wazuh | Default Windows lab |
 |--------|----------------------|---------------------|
-| Wazuh agent | TCP 1514 | If agents installed |
+| Wazuh agent | TCP 1514 | **Default lab:** `wazuh-agent-web`, `wazuh-agent-app` (compose); inject via `./scripts/wazuh-agent-inject.sh` |
 | Syslog | UDP 514 | Manager listens |
 | `localfile` | Tail a file path in `ossec.conf` | Built-in commands only (`df`, `netstat`, `last`) unless you add paths |
 | Injected test log | Demo script appends to `/var/log/injection-test.log` | Only when running `scripts/wazuh-injection-demo.sh` |
@@ -699,7 +700,12 @@ Does not stop RunPod Ollama — stop `ollama serve` or the pod separately.
 ./scripts/wazuh-injection-demo.sh
 ```
 
-Injects SSH failure lines, triggers rule 5710, exercises webhook → triage → integration logs.
+Default `INJECT_TARGET=agent` appends to the enrolled agent (`wazuh-agent-web`). Use `INJECT_TARGET=manager` for manager `localfile` injection.
+
+```bash
+# One dynamic line on the web agent (no manager restart)
+./scripts/wazuh-agent-inject.sh "Failed password for invalid user root from 203.0.113.42 port 22 ssh2"
+```
 
 ---
 

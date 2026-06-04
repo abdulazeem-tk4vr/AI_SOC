@@ -723,7 +723,7 @@ function Deploy-Siem {
         return
     }
 
-    $siemContainers = @('wazuh-indexer', 'wazuh-manager', 'wazuh-dashboard')
+    $siemContainers = @('wazuh-indexer', 'wazuh-manager', 'wazuh-dashboard', 'wazuh-agent-web', 'wazuh-agent-app')
     Write-Log "SIEM stack: $($siemContainers -join ', ')"
     Write-Log "Compose project: $($Script:SiemProject)"
 
@@ -732,6 +732,10 @@ function Deploy-Siem {
 
     $siemReady = Watch-StackStartup -PhaseLabel 'SIEM' -ContainerNames $siemContainers `
         -RequiredHealthy @('wazuh-indexer', 'wazuh-manager', 'wazuh-dashboard') -MaxWaitSecs 300 -IntervalSecs 5
+    # Agents enroll after manager; non-fatal if still starting
+    foreach ($agent in @('wazuh-agent-web', 'wazuh-agent-app')) {
+        Wait-ForHealthy -ContainerName $agent -MaxWaitSecs 180 -IntervalSecs 5
+    }
 
     if (-not $siemReady) {
         Write-Warn "SIEM startup incomplete. Inspect: docker logs wazuh-manager --tail 50"

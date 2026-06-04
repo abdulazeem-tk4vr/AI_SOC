@@ -5,6 +5,9 @@
 
 version: '3.8'
 
+include:
+  - path: wazuh-agents.yml
+
 services:
   # ============================================================================
   # WAZUH INDEXER (OpenSearch-based)
@@ -100,7 +103,8 @@ services:
       # Custom rules and decoders
       - ../config/wazuh-manager/rules:/var/ossec/etc/rules:rw
       - ../config/wazuh-manager/decoders:/var/ossec/etc/decoders:rw
-      - ../config/wazuh-manager/integrations/ai-soc-webhook:/var/ossec/integrations/ai-soc-webhook:ro
+      - ../config/wazuh-manager/integrations/custom-ai-soc-webhook:/var/ossec/integrations/custom-ai-soc-webhook:ro
+      - ../config/wazuh-manager/integrations/custom-ai-soc-webhook.py:/var/ossec/integrations/custom-ai-soc-webhook.py:ro
       # Dataset replay logs
       - ../datasets/logs:/var/log/external:ro
 
